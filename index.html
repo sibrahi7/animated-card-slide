@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Card Slider</title>
+    <link rel="stylesheet" href="style.css" >
+  </head>
+  <body>
+    <input type="radio" name="position"/>
+    <input type="radio" name="position"/>
+    <input type="radio" name="position"checked/>
+    <input type="radio" name="position"/>
+    <main id="carousel">
+      
+      <div class="item">
+        <img src ="images/skillsimage.png">
+        <h3 class="skills">skills</h3>
+        <p class="description">Java • DSA • Web Development (HTML, CSS, JS) • Git/GitHub • Linux • AWS • AI • Embedded Systems • HCI</p>
+      </div>
+      <div class="item">
+        <img src="images/projectslogo.png">
+        <h3 class="Projects">Projects</h3>
+        <p class="name">3d Animated website|Portfolio|Carousel card slide</p>
+      </div>
+      <div class="item">
+        <img src="images/Experineclogo.png">
+        <h3 class="Experience"> Experiences</h3>
+        <p class="experience">IT Assistant| Web Design & Brand Intern|Teacher Assistant (STEM)|Camp Instructor(STEM)|
+        </p> </div>
+      <div class="item">
+        <img src="images/certificatelogo.png">
+        <h3 class="Certificates">Certificates</h3>
+        <p class="List">1,2,3</p>
+      </div>
+
+    </main>
+    
+    <script>
+(() => {
+  // ========= Config =========
+  const AUTO_CENTER_ON_HOVER = true;     // set to false to keep hover purely visual
+  const WHEEL_NAV = true;                // scroll wheel moves between cards
+  const SWIPE_THRESHOLD_PX = 40;         // touch swipe min distance
+  const PARALLAX_Y = 20;                 // degrees of Y tilt with cursor
+  const PARALLAX_X = 10;                 // degrees of X tilt with cursor
+
+  // ========= Elements =========
+  const carousel = document.getElementById('carousel');
+  if (!carousel) return;
+
+  const items = Array.from(carousel.querySelectorAll('.item'));
+  const radios = Array.from(document.querySelectorAll('input[type="radio"][name="position"]'));
+
+  // Ensure CSS variable --items matches your DOM
+  const itemCount = items.length;
+  carousel.style.setProperty('--items', String(itemCount));
+
+  // Figure out current position from checked radio (fallback to 1)
+  let position = Math.max(
+    1,
+    radios.findIndex(r => r.checked) + 1
+  );
+  setPosition(position, false);
+
+  // ========= Helpers =========
+  function setPosition(p, animate = true) {
+    position = ((p - 1 + itemCount) % itemCount) + 1; // wrap 1..N
+    carousel.style.setProperty('--position', String(position));
+    if (radios[position - 1]) radios[position - 1].checked = true;
+
+    // optional tiny pulse when auto-centering
+    if (animate) {
+      carousel.classList.add('js-centering');
+      clearTimeout(setPosition._t);
+      setPosition._t = setTimeout(() => carousel.classList.remove('js-centering'), 180);
+    }
+  }
+
+  function next(delta = 1) { setPosition(position + delta); }
+
+  // ========= Bind dot clicks =========
+  radios.forEach((r, i) => {
+    r.addEventListener('change', () => setPosition(i + 1, false));
+  });
+
+  // ========= Cursor parallax (throttled with rAF) =========
+  let raf = 0;
+  function onMouseMove(e) {
+    const x = (e.clientX / window.innerWidth) - 0.5;  // -0.5..0.5
+    const y = (e.clientY / window.innerHeight) - 0.5; // -0.5..0.5
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      carousel.style.transform = `rotateY(${x * PARALLAX_Y}deg) rotateX(${-y * PARALLAX_X}deg)`;
+      raf = 0;
+    });
+  }
+  function resetParallax() {
+    carousel.style.transform = 'rotateY(0deg) rotateX(0deg)';
+  }
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseleave', resetParallax);
+
+  // ========= Hover behavior (lift/auto-center) =========
+  items.forEach((item, i) => {
+    item.addEventListener('mouseenter', () => {
+      carousel.classList.add('js-hovering');
+      if (AUTO_CENTER_ON_HOVER) setPosition(i + 1);
+    });
+    item.addEventListener('mouseleave', () => {
+      carousel.classList.remove('js-hovering');
+    });
+  });
+
+  // ========= Keyboard nav (← →) =========
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); next(+1); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); next(-1); }
+  });
+
+  // ========= Wheel nav =========
+  if (WHEEL_NAV) {
+    let wheelLock = false;
+    const wheelCooldown = 250;
+    window.addEventListener('wheel', (e) => {
+      if (wheelLock) return;
+      if (Math.abs(e.deltaY) < 2 && Math.abs(e.deltaX) < 2) return;
+      wheelLock = true;
+      next(e.deltaY > 0 || e.deltaX > 0 ? +1 : -1);
+      setTimeout(() => wheelLock = false, wheelCooldown);
+    }, { passive: true });
+  }
+
+  // ========= Touch swipe nav =========
+  let touchStartX = null;
+  let touchStartY = null;
+
+  window.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (touchStartX == null) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    // horizontal swipe preferred (ignore big vertical drags)
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) >= SWIPE_THRESHOLD_PX) {
+      next(dx < 0 ? +1 : -1);
+    }
+    touchStartX = touchStartY = null;
+  }, { passive: true });
+
+  // ========= Accessibility: set ARIA labels for radios =========
+  const labels = ['Skills','Projects','Experiences','Certificates'];
+  radios.forEach((r, i) => {
+    r.setAttribute('aria-label', labels[i] || `Slide ${i+1}`);
+  });
+})();
+</script>
+
+  </body>
+</html>
